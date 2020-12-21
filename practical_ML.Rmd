@@ -1,0 +1,191 @@
+# Practical Machine Learning
+Author: Rajkumar Gupta
+
+## Introduction
+This analysis meant to be the basis for the course quiz and a prediction assignment writeup. The main goal of the project is to predict the manner in which 6 participants performed some exercise as described below. This is the “classe” variable in the training set. The machine learning algorithm described here is applied to the 20 test cases available in the test data and the predictions are submitted in appropriate format to the Course Project Prediction Quiz for automated grading.
+
+## Environment Preparation
+We first upload the R libraries that are necessary for the complete analysis.
+
+"R
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(corrplot)
+set.seed(200689)
+"
+
+## Data Loading and Cleaning
+Loading the dataset from the URL provided .
+
+"R
+# #URL for the download
+# train_url <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+# test_url  <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+
+# #download the datasets
+# training_data <- read.csv(url(train_url))
+# testing_data  <- read.csv(url(test_url))
+
+training_data <- read.csv("pml-training.csv")
+testing_data  <- read.csv("pml-testing.csv")
+
+
+# dim(Train_Set)
+dim(training_data)
+dim(testing_data)
+"
+
+## Cleaning Data
+In this step, we will clean the dataset and get rid of observations with missing values as well as some meaningless variables.
+
+We clean the Near Zero Variance Variables.
+
+"R
+non_zero_val <- nearZeroVar(training_data, saveMetrics = TRUE)
+head(non_zero_val , 10)
+"
+
+"R
+training_set01 <- training_data[, !non_zero_val$nzv]
+testing_set01 <- testing_data[, !non_zero_val$nzv]
+dim(training_set01)
+dim(testing_set01)
+"
+Removing some columns of the dataset that do not contribute much to the accelerometer measurements.
+
+"R
+regex <- grepl("^X|timestamp|user_name", names(training_set01))
+training <- training_set01[, !regex]
+testing <- testing_set01[, !regex]
+dim(training)
+dim(testing)
+"
+
+Removing columns that contain NA's.
+
+"R
+cond <- (colSums(is.na(training)) == 0)
+training <- training[, cond]
+testing <- testing[, cond]
+"
+
+## Partitioning Training Set
+we split the cleaned training set into a pure training data set (75%) and a validation data set (25%). We will use the validation data set to conduct cross validation in future steps.
+
+
+"R
+set.seed(200689) 
+inTrain <- createDataPartition(training$classe, p = 0.75, list = FALSE)
+validation <- training[-inTrain, ]
+training <- training[inTrain, ]
+dim(validation)
+dim(training)
+"
+
+The Dataset now consists of 54 variables with the observations divided as following:
+
+1.Training Data: 14718 observations.
+2.Validation Data: 4904 observations.
+3.Testing Data: 20 observations.
+Now, the cleaned training data set contains 19622 observations and 54 variables, while the testing data set contains 20 observations and 54 variables.
+
+Correlation Matrix of Columns in the Training Data set.
+
+"R
+corrplot(cor(training[, -length(names(training))]), method = "color", tl.cex = 0.5)
+"
+
+## Prediction Model Building
+Three methods will be applied to model the regressions (in the Train dataset) and the best one (with higher accuracy when applied to the Test dataset) will be used for the quiz predictions. The methods are: Random Forests, Decision Tree and Generalized Boosted Model, as described below. A Confusion Matrix is plotted at the end of each analysis to better visualize the accuracy of the models.
+
+## 1) Method: Random Forest
+
+"R
+# model fit
+set.seed(200689)
+rf_control <- trainControl(method="cv", number=3, verboseIter=FALSE)
+model_fit_rendom_forest <- train(classe ~ ., data=training, method="rf", trControl=rf_control)
+model_fit_rendom_forest$finalModel
+"
+
+"R
+# prediction on Test dataset
+predict_Rand_Forest <- predict(model_fit_rendom_forest, newdata=validation)
+confusion_matrix_RandForest <- confusionMatrix(predict_Rand_Forest, as.factor(validation$classe))
+confusion_matrix_RandForest
+"
+
+"R
+# plot matrix results
+plot(confusion_matrix_RandForest$table, col = confusion_matrix_RandForest$byClass, 
+     main = paste("Random Forest - Accuracy =", 
+     round(confusion_matrix_RandForest$overall['Accuracy'], 4)))
+"
+
+## 2) Method: Decision Trees
+
+"R
+# model fit
+set.seed(12345)
+model_fit_decision_tree <- rpart(classe ~ ., data=training, method="class")
+#fancyRpartPlot(model_fit_decision_tree)
+prp(modelTree)
+"
+
+"R
+# prediction on Test dataset
+predict_Decision_Tree <- predict(model_fit_decision_tree, newdata=validation, type="class")
+confusion_matrix_DecisonTree <- confusionMatrix(predict_Decision_Tree, as.factor(validation$classe))
+confusion_matrix_DecisonTree
+"
+
+"R
+# plot matrix results
+plot(confusion_matrix_DecisonTree$table, col = confusion_matrix_DecisonTree$byClass, 
+     main = paste("Decision Tree - Accuracy =",
+    round(confusion_matrix_DecisonTree$overall['Accuracy'], 4)))
+"
+
+## Applying the Selected Model to the Test Data
+The accuracy of the 2 regression modeling methods above are:
+
+1) Random Forest : 0.9976
+
+2) Decision Tree : 0.7321
+
+In that case, the Random Forest model will be applied to predict the 20 quiz results (testing dataset) as shown below.
+
+
+"R
+predictTEST <- predict(model_fit_rendom_forest, newdata=testing)
+predictTEST
+"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
